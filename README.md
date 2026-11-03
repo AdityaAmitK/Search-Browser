@@ -60,6 +60,8 @@ python3 install.py --rollback
 
 Use the Intel path above when applicable. The installer verifies the signature and identifier, backs up the original app, support folder, and settings once under `.state/install-backups`, and retains the previous app for rollback. Installation and rollback replace the app bundle while preserving the active browser profile; rollback does not rewind browser data. Keep `.state` private and retain it for recovery. If Search is not installed yet, copy the validated app to `/Applications/Search.app` manually.
 
+New installations also require camera and microphone entitlements in the signed bundle. When re-signing a build, pass `--entitlements Search.entitlements` so the hardened runtime can request media access; macOS Privacy settings alone cannot grant it. Rollback remains available for older bundles.
+
 ## Updates
 
 Run `python3 update.py --check-only` to fetch a fresh checkout of this fork's `main` branch and run routing policy and installer checks. Run `python3 update.py` to additionally build it, verify its signature, and run browser integration checks. Successful builds include `search-browser-build.json` beside the app, recording the source, branch, revision, version, and architecture. Checkouts remain in `.state` for review.

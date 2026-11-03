@@ -24,11 +24,22 @@ def copy_profile(source, target):
                 if stat.S_ISSOCK((Path(directory) / name).lstat().st_mode)]
     shutil.copytree(source, target, symlinks=True, dirs_exist_ok=True, ignore=sockets)
 
-def verify(app):
+def verify(app, require_capture=False):
     info = plistlib.loads((app / 'Contents/Info.plist').read_bytes())
     if info.get('CFBundleIdentifier') != IDENTIFIER:
         raise SystemExit('Refusing bundle with unexpected identifier')
     subprocess.run(['/usr/bin/codesign', '--verify', '--deep', '--strict', str(app)], check=True)
+    if require_capture:
+        signed = subprocess.run(
+            ['/usr/bin/codesign', '--display', '--entitlements', '-', '--xml', str(app)],
+            check=True, capture_output=True)
+        try:
+            entitlements = plistlib.loads(signed.stdout)
+        except (plistlib.InvalidFileException, ValueError):
+            raise SystemExit('Refusing app without signed camera and microphone entitlements')
+        if any(entitlements.get(key) is not True for key in (
+                'com.apple.security.device.camera', 'com.apple.security.device.audio-input')):
+            raise SystemExit('Refusing app without signed camera and microphone entitlements')
 
 def require_closed():
     status = subprocess.run(['/usr/bin/pgrep', '-x', 'Search'], stdout=subprocess.DEVNULL).returncode
@@ -65,7 +76,7 @@ def main():
     source = previous if args.rollback else args.install.resolve()
     if not source.is_dir() or not TARGET.is_dir():
         raise SystemExit('Source and existing installed app must both exist.')
-    verify(source)
+    verify(source, require_capture=not args.rollback)
     # Preserve the original application and profile only once. Never print data.
     original = BACKUPS / 'original.app'
     complete = BACKUPS / "original-backup-complete"
@@ -91,7 +102,7 @@ def main():
     committed = False
     try:
         copy(source, fresh)
-        verify(fresh)
+        verify(fresh, require_capture=not args.rollback)
         # ditto supports different filesystems; all following renames stay local.
         copy(TARGET, candidate)
         verify(candidate)

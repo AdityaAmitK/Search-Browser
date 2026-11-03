@@ -306,7 +306,7 @@ else
   # A build that cannot sign at all is not a build: `|| true` here let one
   # through as though it had finished, leaving a bundle that would not open.
   # set -e stops it now, with codesign's own words above.
-  codesign --force --deep --sign - "$APP"
+  codesign --force --deep --entitlements Search.entitlements --sign - "$APP"
   [ "$STEP" != "app" ] && echo "no Developer ID certificate found — the DMG will only open on this Mac" >&2
 fi
 
